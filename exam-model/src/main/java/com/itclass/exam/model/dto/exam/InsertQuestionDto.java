@@ -1,0 +1,38 @@
+package com.itclass.exam.model.dto.exam;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+
+import java.util.List;
+
+/**
+ * @author: 徐泰森
+ * @create: 2024-04-19 16:16
+ **/
+@Data
+public class InsertQuestionDto {
+    @Schema(description = "题目内容")
+    private String quContent;
+
+    @Schema(description = "创建人")
+    private String createPerson;
+
+    @Schema(description = "题目类型")
+    private Integer quType;
+
+    @Schema(description = "题目难度")
+    private Integer level;
+
+    @Schema(description = "图片")
+    private String image;
+
+    @Schema(description = "所属题库id")
+    private List<String> quBankId;
+
+    @Schema(description = "所属题库名")
+    private String quBankName;
+
+    @Schema(description = "题目解析")
+    private String analysis;
+
+}

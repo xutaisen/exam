@@ -1,0 +1,641 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itclass.exam.manager.mapper.ExamMapper">
+
+
+    <!-- 用于select查询公用抽取的列 -->
+    <sql id="columns">
+        id, exam_name, exam_desc, type, password, duration, start_time, end_time, total_score, pass_score, status, create_time, update_time, is_deleted
+    </sql>
+
+    <sql id="demo">
+        qu.id,
+               qu_content,
+               create_person,
+               qu_type,
+               level,
+               image,
+               qu_bank_id,
+               qu_bank_name,
+               analysis,
+               create_time,
+               update_time,
+               is_deleted
+    </sql>
+
+    <sql id="findPageWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and exam_name like CONCAT('%',#{keyword},'%')
+            </if>
+            and is_deleted = 0
+        </where>
+    </sql>
+
+    <!-- 添加题库-->
+    <insert id="insertBank">
+        insert into db_spzx.question_bank
+            (id, bank_name)
+        VALUES (#{id}, #{bankName})
+    </insert>
+
+    <!-- 添加考试-->
+    <insert id="addExamName">
+        insert into db_spzx.exam
+        (exam_name, exam_desc, type, password, duration, start_time, end_time, total_score, pass_score)
+        VALUES (#{examName}, #{examDesc}, #{type}, #{password}, #{duration}, #{startTime}, #{endTime}, #{totalScore},
+                #{passScore})
+    </insert>
+
+    <!-- 给考试添加题目-->
+    <insert id="addExamQuestion">
+        insert into db_spzx.exam_question
+            (exam_id, question_ids, scores)
+        VALUES (#{id}, #{insertExamDto.questionId}, #{insertExamDto.score})
+    </insert>
+
+    <!-- 添加题目-->
+    <insert id="insertTitle">
+        insert into db_spzx.question
+        (qu_content, create_person, qu_type, level, qu_bank_id, qu_bank_name, analysis)
+        VALUES (#{insertQuestionDto.quContent}, #{insertQuestionDto.createPerson}, #{insertQuestionDto.quType},
+                #{insertQuestionDto.level}, #{bankId}, #{insertQuestionDto.quBankName}, #{insertQuestionDto.analysis})
+    </insert>
+
+    <!-- 添加题目对应的答案-->
+    <insert id="insertAnswer">
+        insert into db_spzx.answerdemo
+            (content, qu_id, is_right)
+        VALUES (#{answerVo.content}, #{answerVo.quId}, #{answerVo.isRight})
+    </insert>
+
+    <!-- 往成绩表中添加考试记录-->
+    <insert id="insertRecord">
+        insert into db_spzx.exam_record
+            (user_id, exam_id, exam_time, logic_score, pass_score, total_score)
+        VALUES (#{record.userId}, #{record.examId}, #{record.examTime}, #{record.logicScore}, #{record.passScore},
+                #{record.totalScore})
+    </insert>
+
+    <!-- 添加答题卡表字段-->
+    <insert id="addPaperAnswers">
+        insert into db_spzx.paper_answers
+            (paper_id, qu_id)
+        VALUES (#{examId}, #{quId})
+    </insert>
+
+    <!-- 添加题目状态表字段-->
+    <insert id="addPaperQuState">
+        insert into db_spzx.paper_qu_state
+            (qu_id, paper_id, answer_id)
+        VALUES (#{quId}, #{examId}, #{i})
+    </insert>
+
+    <insert id="insertRecordQu">
+        insert into db_spzx.record_qu_state (paper_id, record_id, is_right, qu_id, qu_content)
+        VALUES (#{recordQuState.paperId}, #{recordQuState.recordId}, #{recordQuState.isRight}, #{recordQuState.quId},
+                #{recordQuState.quContent})
+    </insert>
+    <insert id="insertRecordAn">
+        insert into db_spzx.record_an_state (paper_id, record_id, answer_id, an_content, is_checked, isTrue)
+        VALUES (#{recordAnState.paperId}, #{recordAnState.recordId}, #{recordAnState.answerId},
+                #{recordAnState.anContent}, #{recordAnState.isChecked}, #{recordAnState.isTrue})
+    </insert>
+
+    <!-- 删除题库-->
+    <update id="deleteByName">
+        update db_spzx.question_bank
+        set is_deleted = 1
+        where bank_name = #{bankName}
+    </update>
+
+
+    <!-- 删除之前分配的题库-->
+    <update id="deleteById">
+        update db_spzx.question
+        set qu_bank_id   = null,
+            qu_bank_name = null
+        where id = #{id}
+    </update>
+
+    <!-- 重新分配题库      -->
+    <update id="doAssign">
+        update db_spzx.question
+        set qu_bank_id = #{s}
+        where id = #{id}
+    </update>
+
+
+    <!-- 删除题目 逻辑删除-->
+    <update id="deleteQuestionById">
+        update db_spzx.question
+        set is_deleted = 1
+        where id = #{questionId}
+    </update>
+
+    <!-- 删除考试 逻辑删除-->
+    <update id="deleteExamByName">
+        update db_spzx.exam
+        set is_deleted = 1
+        where exam_name = #{examName}
+    </update>
+
+    <!--重新写入所属题库-->
+    <update id="doAssignBankName">
+        update db_spzx.question
+        set qu_bank_name = #{join1}
+        where id = #{id}
+    </update>
+
+    <!--修改答案是否选中-->
+    <update id="setAnswerCheckedToTrue">
+        update db_spzx.paper_qu_state
+        set checked = true
+        where paper_id = #{paperId}
+          and qu_id = #{quId}
+          and answer_id = #{id}
+    </update>
+
+    <!--修改答案是否选中-->
+    <update id="setAnswerCheckedToFalse">
+        update db_spzx.paper_qu_state
+        set checked = false
+        where paper_id = #{paperId}
+          and qu_id = #{quId}
+          and answer_id = #{id}
+    </update>
+
+    <!-- 更改题目的答题状态-已答-->
+    <update id="setQuIsAnswerd">
+        update db_spzx.paper_answers
+        set answered = true
+        where paper_id = #{paperId}
+          and qu_id = #{quId}
+    </update>
+
+    <!-- 更改答题卡是否正确, 有一个对不上就是错的-->
+    <update id="setQuIsRight">
+        update db_spzx.paper_answers
+        set is_right = true
+        where paper_id = #{paperId}
+          and qu_id = #{quId}
+    </update>
+
+    <!-- 给回答正确的题目赋分-->
+    <update id="setPaQuScore">
+        update db_spzx.paper_answers
+        set actual_score = #{score}
+        where paper_id = #{paperId}
+          and qu_id = #{quId}
+    </update>
+
+    <!-- 清空答题卡表 和题目状态表的数据-->
+    <update id="updataPaperAnswers">
+        update db_spzx.paper_answers
+        set actual_score = 0,
+            answer       = null,
+            is_right     = 0,
+            answered     = 0
+        where paper_id = #{paperId}
+    </update>
+
+    <!-- 清空答题卡表 和题目状态表的数据-->
+    <update id="updataPaperQuState">
+        update db_spzx.paper_qu_state
+        set checked = 0
+        where paper_id = #{paperId}
+    </update>
+
+    <!-- 更新密码-->
+    <update id="updatePassword">
+        update db_spzx.sys_user
+        set password = #{md5_password}
+        where id = #{userId}
+    </update>
+
+
+    <select id="setExamName" resultType="java.lang.String">
+        select exam_name
+        from db_spzx.exam
+        where id = #{examId}
+    </select>
+
+
+    <!-- 重新赋值total-->
+    <select id="selectTotal" resultType="java.lang.Long">
+        select count(id)
+        from db_spzx.question_bank
+        <where>
+            <if test="keyword != null and keyword != ''">
+                bank_name like CONCAT('%', #{keyword}, '%')
+            </if>
+            and is_deleted = 0
+        </where>
+    </select>
+
+    <select id="findByPage" resultType="com.itclass.exam.model.entity.exam1.Exam">
+        select
+        <include refid="columns"></include>
+        from db_spzx.exam
+        <include refid="findPageWhere"/>
+    </select>
+
+    <select id="findByPageGrade" resultType="com.itclass.exam.model.entity.exam1.Record">
+
+        select re.id, re.user_id, re.exam_id, re.exam_time, re.logic_score, re.pass_score, re.total_score,
+        re.create_time, re.update_time, re.is_deleted
+        from db_spzx.exam_record re
+
+        inner join db_spzx.sys_user us on us.id = re.user_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and exam_id like CONCAT('%',#{keyword},'%')
+            </if>
+            and us.username = #{userName} and re.is_deleted = 0
+        </where>
+    </select>
+
+    <!-- 查询题库-->
+    <select id="questionBankFind" resultType="com.itclass.exam.model.entity.exam1.QuestionBank">
+        select id, BANK_NAME, CREATE_TIME, UPDATE_TIME, IS_DELETED
+        from db_spzx.question_bank
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and bank_name like CONCAT('%',#{keyword},'%')
+            </if>
+            and is_deleted = 0
+        </where>
+    </select>
+
+
+    <!--单、多、判、简答题数量-->
+    <select id="findSingleChoice" resultType="java.lang.Integer">
+        select count(qu_type)
+        from db_spzx.question
+        where qu_type = 1
+          and qu_bank_name like CONCAT('%', #{bankName}, '%')
+    </select>
+
+
+    <select id="findmultipleChoice" resultType="java.lang.Integer">
+        select count(qu_type)
+        from db_spzx.question
+        where qu_type = 2
+          and qu_bank_name like CONCAT('%', #{bankName}, '%')
+    </select>
+
+    <select id="findjudge" resultType="java.lang.Integer">
+        select count(qu_type)
+        from db_spzx.question
+        where qu_type = 3
+          and qu_bank_name like CONCAT('%', #{bankName}, '%')
+    </select>
+
+    <select id="findshortAnswer" resultType="java.lang.Integer">
+        select count(qu_type)
+        from db_spzx.question
+        where qu_type = 4
+          and qu_bank_name like CONCAT('%', #{bankName}, '%')
+    </select>
+
+    <!-- 查询所有题库-->
+    <select id="getAllBank" resultType="com.itclass.exam.model.entity.exam1.QuestionBank">
+        select id, bank_name, create_time, update_time, is_deleted
+        from db_spzx.question_bank
+        where is_deleted = 0
+    </select>
+
+    <!-- 分页查询题目-->
+    <select id="findByPageQusetion" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select id, qu_content, create_person, qu_type, level, image, qu_bank_id, qu_bank_name, analysis, create_time,
+        update_time, is_deleted
+        from db_spzx.question
+        <where>
+            <if test="type != null and type != ''">
+                and qu_type = #{type}
+            </if>
+            <if test="bankName != null and bankName != ''">
+                and qu_bank_name like CONCAT('%',#{bankName},'%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and qu_content like CONCAT('%',#{keyword},'%')
+            </if>
+            and is_deleted = 0
+        </where>
+    </select>
+
+    <!-- 分配过的题库-->
+    <select id="findBankIng" resultType="java.lang.String">
+        select qu_bank_id
+        from db_spzx.question
+        where id = #{questionId}
+    </select>
+
+    <!-- 按条件查询考试（教师-->
+    <select id="findByPageManage" resultType="com.itclass.exam.model.entity.exam1.Exam">
+        select id, exam_name, exam_desc, type, password, duration, start_time, end_time, total_score, pass_score,
+        status, create_time, update_time, is_deleted
+        from db_spzx.exam
+        <where>
+            <if test="selectValue != null and selectValue != ''">
+                and type = #{selectValue}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and exam_name like CONCAT('%',#{keyword},'%')
+            </if>
+            <if test="createTimeBegin != null and createTimeBegin != ''">
+                and start_time >= #{createTimeBegin}
+            </if>
+            <if test="createTimeEnd != null and createTimeEnd != ''">
+                and end_time &lt;= #{createTimeEnd}
+            </if>
+            and is_deleted = 0
+        </where>
+    </select>
+
+    <!-- 根据id查询题库名字-->
+    <select id="byNameForId" resultType="java.lang.String">
+        select bank_name
+        from db_spzx.question_bank
+        where id = #{id}
+    </select>
+
+    <!--//无条件查询试题-->
+    <select id="questionNoPage" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select id, qu_content, create_person, qu_type, level, image, qu_bank_id, qu_bank_name, analysis, create_time,
+        update_time, is_deleted
+        from db_spzx.question
+        <where>
+            <if test="type != null and type != ''">
+                and qu_type = #{type}
+            </if>
+            <if test="bankName != null and bankName != ''">
+                and qu_bank_id like CONCAT('%',#{bankName},'%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and qu_content like CONCAT('%',#{keyword},'%')
+            </if>
+            and is_deleted = 0
+        </where>
+    </select>
+
+
+    <!--// 根据名字查询对应考试id-->
+    <select id="getExamId" resultType="java.lang.Integer">
+        select id
+        from db_spzx.exam
+        where exam_name = #{examName}
+          and is_deleted = 0
+    </select>
+
+    <!--根据题目内容查询题目id-->
+    <select id="getQuId" resultType="java.lang.Integer">
+        select id
+        from db_spzx.question
+        where qu_content = #{quContent}
+          and is_deleted = 0
+
+    </select>
+
+    <!--根据考试id查询题目集合（单选题）-->
+    <select id="finRadioList" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select
+        <include refid="demo"></include>
+        from db_spzx.question qu
+        inner join db_spzx.exam_question eq on eq.question_ids = qu.id
+        where eq.exam_id = #{id}
+        and qu.qu_type = 1
+        and qu.is_deleted = 0
+
+    </select>
+
+    <!--根据考试id查询题目集合（多选题）-->
+    <select id="findMultiList" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select
+        <include refid="demo"></include>
+        from db_spzx.question qu
+        inner join db_spzx.exam_question eq on eq.question_ids = qu.id
+        where eq.exam_id = #{id}
+        and qu.qu_type = 2
+        and qu.is_deleted = 0
+    </select>
+
+    <select id="findJudgeList" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select
+        <include refid="demo"></include>
+        from db_spzx.question qu
+        inner join db_spzx.exam_question eq on eq.question_ids = qu.id
+        where eq.exam_id = #{id}
+        and qu.qu_type = 3
+        and qu.is_deleted = 0
+    </select>
+
+    <select id="findShortAnswer" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select
+        <include refid="demo"></include>
+        from db_spzx.question qu
+        inner join db_spzx.exam_question eq on eq.question_ids = qu.id
+        where eq.exam_id = #{id}
+        and qu.qu_type = 4
+        and qu.is_deleted = 0
+    </select>
+
+    <!--根据考试id查询题目集合222-->
+    <select id="paperDetail2" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select
+        <include refid="demo"></include>
+        from db_spzx.question qu
+        inner join db_spzx.exam_question eq on eq.question_ids = qu.id
+        where eq.exam_id = #{id}
+        and qu.is_deleted = 0
+
+    </select>
+
+    <!--获取考试时长-->
+    <select id="getTime" resultType="java.lang.Integer">
+        select duration
+        from db_spzx.exam
+        where id = #{id}
+          and is_deleted = 0
+    </select>
+
+    <!--//根据题目id查询题目内容-->
+    <select id="findPaperConcentById" resultType="java.lang.String">
+        select qu_content
+        from db_spzx.question
+        where id = #{quId}
+          and is_deleted = 0
+    </select>
+
+    <!--根据题目id查询题目类型-->
+    <select id="findPaperQuTypeById" resultType="java.lang.Integer">
+        select qu_type
+        from db_spzx.question
+        where id = #{quId}
+          and is_deleted = 0
+    </select>
+
+    <!--根据题目id查询答案-->
+    <select id="findAnswer" resultType="com.itclass.exam.model.vo.exam.AnswerVo">
+        select id,
+               content,
+               images,
+               analysis,
+               qu_id,
+               is_right,
+               checked,
+               abc,
+               create_time,
+               update_time,
+               is_deleted,
+               sort
+        from db_spzx.answerdemo
+        where qu_id = #{quId}
+          and is_deleted = 0
+    </select>
+
+    <!--设置答题卡答题状态-->
+    <select id="selectQu" resultType="com.itclass.exam.model.entity.exam1.Question">
+        select actual_score, answer, is_right, answered
+        from db_spzx.paper_answers
+        where qu_id = #{id1}
+          and paper_id = #{id}
+    </select>
+
+
+    <!--修改答案是否选中-->
+    <select id="ifChecked" resultType="java.lang.Boolean">
+        select checked
+        from db_spzx.paper_qu_state
+        where qu_id = #{quId}
+          and paper_id = #{paperId}
+          and answer_id = #{id}
+    </select>
+
+    <!--获取题目分值-->
+    <select id="getPaQuScore" resultType="java.lang.Integer">
+        select scores
+        from db_spzx.exam_question
+        where exam_id = #{paperId}
+          and question_ids = #{quId}
+    </select>
+
+
+    <select id="getExam" resultType="com.itclass.exam.model.entity.exam1.Exam">
+        select id,
+               exam_name,
+               exam_desc,
+               type,
+               password,
+               duration,
+               start_time,
+               end_time,
+               total_score,
+               pass_score,
+               status,
+               create_time,
+               update_time,
+               is_deleted
+        from db_spzx.exam
+        where id = #{paperId}
+    </select>
+
+    <!--查询考试得分-->
+    <select id="getActualScore" resultType="java.lang.Integer">
+        select sum(actual_score)
+        from db_spzx.paper_answers
+        where paper_id = #{paperId}
+    </select>
+
+    <!--获取答案列表-->
+    <select id="getAnswerList" resultType="java.lang.Integer">
+        select id
+        from db_spzx.answerdemo
+        where qu_id = #{quId}
+          and is_deleted = 0
+    </select>
+
+    <!--通过考试id查询出题目id集合-->
+    <select id="getQuIdListBypaId" resultType="java.lang.Integer">
+        select question_ids
+        from db_spzx.exam_question
+        where exam_id = #{paperId}
+    </select>
+
+
+    <select id="getRecordIdByTime" resultType="java.lang.Integer">
+        select id
+        from db_spzx.exam_record
+        where exam_time = #{date}
+    </select>
+
+    <select id="getIsRightById" resultType="java.lang.Boolean">
+        select is_right
+        from db_spzx.paper_answers
+        where paper_id = #{paperId}
+          and qu_id = #{item}
+    </select>
+
+    <select id="getAnswerListByPaId" resultType="java.lang.Integer">
+        select answer_id
+        from db_spzx.paper_qu_state
+        where paper_id = #{paperId}
+    </select>
+    <select id="getAnContentById" resultType="java.lang.String">
+        select content
+        from db_spzx.answerdemo
+        where id = #{item}
+    </select>
+
+    <select id="getAnIsChecked" resultType="java.lang.Boolean">
+        select checked
+        from db_spzx.paper_qu_state
+        where paper_id = #{paperId}
+          and answer_id = #{item}
+    </select>
+
+    <select id="getAnIsTrue" resultType="java.lang.Boolean">
+        select is_right
+        from db_spzx.answerdemo
+        where id = #{item}
+    </select>
+
+    <select id="getRecordQuState" resultType="com.itclass.exam.model.entity.exam1.RecordQuState">
+        select id, paper_id, record_id, is_right, qu_id, qu_content
+        from db_spzx.record_qu_state
+        where record_id = #{recordId}
+    </select>
+
+    <select id="getAnIdByQuId" resultType="java.lang.Integer">
+        select id
+        from db_spzx.answerdemo
+        where qu_id = #{id}
+    </select>
+
+    <select id="getRecordAnVo" resultType="com.itclass.exam.model.vo.exam.RecordAnVo">
+        select answer_id, an_content, isTrue, is_checked
+        from db_spzx.record_an_state
+        where record_id = #{recordId}
+          and answer_id = #{anId}
+    </select>
+
+    <select id="getMySelf" resultType="com.itclass.exam.model.entity.system.SysUser">
+        select id,
+               username,
+               password,
+               name,
+               phone,
+               avatar,
+               description,
+               status
+        from db_spzx.sys_user
+        where id = #{userId}
+    </select>
+
+
+    <!--select *
+    from
+    db_spzx.exam_record re
+    inner join db_spzx.sys_user us on us.id = re.user_id
+    where us.username = #{userName}-->
+</mapper>

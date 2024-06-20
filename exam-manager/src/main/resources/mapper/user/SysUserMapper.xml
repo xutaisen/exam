@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itclass.exam.manager.mapper.SysUserMapper">
+
+    <!-- 用于select查询公用抽取的列 -->
+    <sql id="columns">
+        id,username userName ,password,name,phone,avatar,description,status,create_time,update_time,is_deleted
+    </sql>
+
+    <sql id="findPageWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and username like CONCAT('%',#{keyword},'%')
+            </if>
+            <if test="createTimeBegin != null and createTimeBegin != ''">
+                and create_time >= #{createTimeBegin}
+            </if>
+            <if test="createTimeEnd != null and createTimeEnd != ''">
+                and create_time &lt;= #{createTimeEnd}
+            </if>
+            and is_deleted = 0
+        </where>
+    </sql>
+
+    <!-- 删除用户-->
+    <update id="deleteById">
+        update sys_user
+        set is_deleted = 1
+        where id = #{userId}
+    </update>
+
+    <!-- 修改用户-->
+    <update id="updateSysUser">
+        update sys_user set
+        <if test="userName != null and userName != ''">
+            username = #{userName},
+        </if>
+        <if test="password != null and password != ''">
+            password = #{password},
+        </if>
+        <if test="name != null and name != ''">
+            name = #{name},
+        </if>
+        <if test="phone != null and phone != ''">
+            phone = #{phone},
+        </if>
+        <if test="description != null and description != ''">
+            description = #{description},
+        </if>
+        <if test="status != null and status != ''">
+            status = #{status},
+        </if>
+        update_time = now()
+        where
+        id = #{id}
+    </update>
+
+
+    <select id="selectUserInfoByUserName" resultType="com.itclass.exam.model.entity.system.SysUser">
+        select
+        <include refid="columns"/>
+        from sys_user where username = #{userName} and is_deleted = 0
+    </select>
+
+    <!-- 新增用户-->
+    <insert id="addUser">
+        insert into sys_user (id,
+                              username,
+                              password,
+                              name,
+                              phone,
+                              avatar,
+                              description,
+                              status)
+        values (#{id},
+                #{userName},
+                #{password},
+                #{name},
+                #{phone},
+                #{avatar},
+                #{description},
+                #{status})
+    </insert>
+
+
+    <!-- 用户条件查询分页接口-->
+    <select id="findByPage" resultType="com.itclass.exam.model.entity.system.SysUser">
+        select
+        <include refid="columns"/>
+        from sys_user
+        <include refid="findPageWhere"/>
+        order by id desc
+    </select>
+
+
+    <select id="byId" resultType="java.lang.Integer">
+        select id
+        from sys_user
+        where username = #{name}
+    </select>
+
+    <select id="byUser" resultType="java.lang.String">
+        select id
+        from sys_user
+        where id = #{id}
+    </select>
+
+    <select id="findAllStu" resultType="com.itclass.exam.model.entity.system.SysUser">
+        select us.id,
+        us.username,
+        us.password,
+        us.name,
+        us.phone,
+        us.avatar,
+        us.description,
+        us.status,
+        us.create_time,
+        us.update_time,
+        us.is_deleted
+        from sys_user us
+        inner join sys_user_role role on us.id = role.user_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and username like CONCAT('%',#{keyword},'%')
+            </if>
+            and role.role_id = 51
+            and us.is_deleted = 0
+        </where>
+    </select>
+
+</mapper>

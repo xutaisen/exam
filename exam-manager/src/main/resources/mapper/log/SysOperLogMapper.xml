@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itclass.exam.manager.mapper.SysOperLogMapper">
+
+    <!-- 公共字段-->
+    <sql id="findPageWhere">
+        <where>
+            <if test="title != null and title != ''">
+                and title like CONCAT('%',#{title},'%')
+            </if>
+            <if test="createTimeBegin != null and createTimeBegin != ''">
+                and create_time >= #{createTimeBegin}
+            </if>
+            <if test="createTimeEnd != null and createTimeEnd != ''">
+                and create_time &lt;= #{createTimeEnd}
+            </if>
+            and is_deleted = 0
+        </where>
+    </sql>
+
+
+    <select id="findByPage" resultType="com.itclass.exam.model.entity.system.SysOperLog">
+        select id,
+        title,
+        method,
+        request_method,
+        operator_type,
+        oper_name,
+        oper_url,
+        oper_ip,
+        oper_param,
+        json_result,
+        status,
+        error_msg,
+        create_time,
+        update_time,
+        is_deleted
+        from sys_oper_log
+        <include refid="findPageWhere"/>
+        order by id desc
+
+    </select>
+
+
+    <insert id="insert">
+        insert into sys_oper_log (id,
+                                  title,
+                                  method,
+                                  request_method,
+                                  operator_type,
+                                  oper_name,
+                                  oper_url,
+                                  oper_ip,
+                                  oper_param,
+                                  json_result,
+                                  status,
+                                  error_msg)
+        values (#{id},
+                #{title},
+                #{method},
+                #{requestMethod},
+                #{operatorType},
+                #{operName},
+                #{operUrl},
+                #{operIp},
+                #{operParam},
+                #{jsonResult},
+                #{status},
+                #{errorMsg})
+    </insert>
+
+
+</mapper>
